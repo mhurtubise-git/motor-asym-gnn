@@ -37,21 +37,23 @@ from metrics_utils import compute_extended_metrics, metrics_to_dataframe
 # MAE minimised) over 10 LOO seeds per trial. See the accompanying paper
 # for details on the search space and selection procedure.
 HPS_BY_SCORE = {
-    'bbt': dict(
+    'bbt': dict(  # HPs article (trial #2 Optuna, reproduit rho=0.604 MAE=0.0315)
         graph_dir='data/bbt',
-        dropout=0.0730,
-        lr=0.00060,
-        weight_decay=2.63e-06,
-        batch_size=4,
+        hidden_dims=[8],
+        dropout=0.1,
+        lr=5e-3,
+        weight_decay=1e-5,
+        batch_size=16,
         epochs=100,
     ),
-    'nhpt': dict(
+    'nhpt': dict(  # HPs article (retrouves via logs Claude Code, "OptMAE") - reproduit rho=0.754
         graph_dir='data/nhpt',
-        dropout=0.1415,
-        lr=0.00141,
-        weight_decay=2.86e-07,
-        batch_size=16,
-        epochs=120,
+        hidden_dims=[8],
+        dropout=0.1,
+        lr=1e-3,
+        weight_decay=1e-3,
+        batch_size=8,
+        epochs=150,
     ),
 }
 
@@ -262,8 +264,9 @@ def build_parser():
     p.add_argument('--in_dim', type=int, default=3,
                    help="Input feature dimension per node "
                         "([vol, elongation, curvature]).")
-    p.add_argument('--hidden_dims', type=int, nargs='+', default=[16, 8],
-                   help="Hidden dimensions of the encoder and MLP head.")
+    p.add_argument('--hidden_dims', type=int, nargs='+', default=None,
+                   help="Hidden dimensions of the encoder. Default: [8] "
+                        "(single hidden layer, tuned by Optuna).")
     p.add_argument('--mode', default='hetero', choices=['hetero', 'homo'],
                    help="'hetero' uses distinct parameters per relation "
                         "(intra / inter). 'homo' uses shared parameters.")
@@ -295,8 +298,8 @@ def resolve_args(args):
             if getattr(args, key, None) is None:
                 setattr(args, key, value)
     fallback = HPS_BY_SCORE['nhpt']
-    for key in ('graph_dir', 'dropout', 'lr', 'weight_decay',
-                'batch_size', 'epochs'):
+    for key in ('graph_dir', 'hidden_dims', 'dropout', 'lr',
+                'weight_decay', 'batch_size', 'epochs'):
         if getattr(args, key, None) is None:
             setattr(args, key, fallback[key])
     return args
